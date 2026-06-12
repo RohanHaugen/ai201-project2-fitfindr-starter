@@ -17,9 +17,35 @@ Usage (once implemented):
     print(result["fit_card"])
     print(result["error"])   # None on success
 """
-
+import re
 from tools import search_listings, suggest_outfit, create_fit_card
+# ── query parsing  ─────────────────────────────────────────────────────────────
+_SIZE_RE=re.compile(r"\b(size\s*(XS|S|M|L|XL|XXS|XXL))\b", re.IGNORECASE)
 
+_PRICE_RE=re.compile(r"(?:under|below|<|max)?\s*\$\s*(\d+(?:\.\d+)?)", re.IGNORECASE)
+
+_NOISE_RE=re.compile(r"\b(under|below|max|size|for|a|an|the|looking|i\'m|im)\b", re.IGNORECASE)
+
+def _parse_query(query: str) -> dict:
+    size_match=_SIZE_RE.search(query)
+    price_match=_PRICE_RE.search(query)
+    size=size_match.group(1).upper() if size_match else None
+    max_price=float(price_match.group(1)) if price_match else None
+    description = query
+    spans_to_remove = sorted(
+        [m.span() for m in [size_match, price_match] if m],
+        reverse=True,
+    )
+    for start, end in spans_to_remove:
+        description = description[:start]+" "+description[end:]
+    description = _NOISE_RE.sub(" ", description)
+    description = re.sub(r"[,;]+", " ", description)
+    description = re.sub(r"\s{2,}", " ", description).strip()
+    return {
+        "description": description,
+        "size": size,
+        "max_price": max_price,
+    }
 
 # ── session state ─────────────────────────────────────────────────────────────
 
@@ -94,7 +120,16 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     """
     # TODO: implement the planning loop
     session = _new_session(query, wardrobe)
-    session["error"] = "Planning loop not yet implemented."
+    session["parsed"] = _parse_query(query)
+    session["search_results"]= search_listings(description=session["parsed"]["description"], size=session["parsed"]["size"], max_price=session["parsed"]["max_price"])
+    #following this is error handling for no results
+    if not session["search_results"]:
+        session["error"] = "No matching items found. Try adjusting your query?"
+        return session
+    session["selected_item"]=session["search_results"][0]
+    session["outfit_suggestion"]=suggest_outfit(session["selected_item"], session["wardrobe"])
+    session["fit_card"]=create_fit_card(session["outfit_suggestion"], session["selected_item"])
+    #session["error"] = "Planning loop not yet implemented."
     return session
 
 

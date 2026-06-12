@@ -41,6 +41,34 @@ def search_listings(
     size: str | None = None,
     max_price: float | None = None,
 ) -> list[dict]:
+    listings = load_listings()
+    filtered=[]
+    for listing in listings:
+        if max_price is not None and listing.get("price",0) > max_price:
+            continue
+        if size is not None and size.lower() not in listing.get("size","").lower():
+            continue
+        filtered.append(listing)
+
+    keywords = set(description.lower().split())
+    def score(listing:dict) -> int:
+        searchable = " ".join([
+            listing.get("title","") or "",
+            listing.get("description","") or "",
+            listing.get("category","") or "",
+            listing.get("brand","") or "",
+            listing.get("condition","") or "",
+            " ".join(listing.get("style_tags",[])),
+            " ".join(listing.get("colors",[])),
+        ]).lower()
+        tokens = set(searchable.split())
+        return len(keywords & tokens)
+    scored = [(listing, score(listing)) for listing in filtered]
+    #currently has a low threshold for filtering, can be raised if necessary
+    #could probably set it to 2 or something to filter out everythings thats just vintage or something like that
+    scored = [(listing, s) for listing, s in scored if s>0]
+    scored.sort(key=lambda x: x[1], reverse=True)
+    return [listing for listing, s in scored]
     """
     Search the mock listings dataset for items matching the description,
     optional size, and optional price ceiling.
@@ -76,6 +104,27 @@ def search_listings(
 # ── Tool 2: suggest_outfit ────────────────────────────────────────────────────
 
 def suggest_outfit(new_item: dict, wardrobe: dict) -> str:
+    items = wardrobe.get('items',[])
+    if not items:
+        prompt=(
+            f"A user is considering buying this thrifted item:\n{new_item}\n\n"
+            "Their wardrobe is empty. Give general styling advice for this item: "
+            "what kinds of items pair well with it, what aesthetic or vibe it suits, and how they might build outfits around it"
+        )
+    else:
+        wardrobe_str="\n".join(f"- {item}" for item in items)
+        prompt=(
+            f"A user is considering buying this thrifted item:\n{new_item}\n\n"
+            f"Their wardrobe contains the following items:\n{wardrobe_str}\n\n"
+            "Suggest 1–2 complete outfits that combine the new item with specific pieces from the wardrobe. "
+            "Name the exact wardrobe items used in each outfit and briefly explain why the combination works."
+        )
+    client=_get_groq_client()
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.choices[0].message.content
     """
     Given a thrifted item and the user's wardrobe, suggest 1–2 complete outfits.
 
@@ -107,6 +156,31 @@ def suggest_outfit(new_item: dict, wardrobe: dict) -> str:
 # ── Tool 3: create_fit_card ───────────────────────────────────────────────────
 
 def create_fit_card(outfit: str, new_item: dict) -> str:
+    if not outfit or not outfit.strip():
+        return "Error: No outfit suggestion provided. Please generate an outfit suggestion using suggest_outfit() before creating a fit card."
+    prompt=f"""You are writing a casual, authentic OOTD (outfit of the day) caption for Instagram or TikTok.
+    Here are the details of the thrifted item the user is featuring:
+    -Thrifted item: {new_item.get("name", "this thrifted find")}
+    -Price: ${new_item.get("price", "unknown price")}
+    -Platform: {new_item.get("platform", "a thrift platform")}
+    -Full outfit suggestion: {outfit}
+
+    Write a 2–4 sentence caption that:
+    -Sounds like a real person posting their outfit rather than a product description.
+    -Mentions the item name, price and platform naturally (once each).
+    -Captures the specific vibe of the outfit.
+    -Feels frewsh and spontaneous, not templated.
+
+Return only the caption text, without any hashtags or labels.
+Do not utilize hyphens or m-dashes.
+"""
+    client=_get_groq_client()
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.9,
+    )
+    return response.choices[0].message.content
     """
     Generate a short, shareable outfit caption for the thrifted find.
 

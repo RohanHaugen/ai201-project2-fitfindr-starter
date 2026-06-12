@@ -115,6 +115,10 @@ User query
     ▼
 Planning Loop ───────────────────────────────────────────┐
     │                                                    │
+    │                                                    │
+Query Parsing (Regex)                                    │
+    │                                                    │
+    │                                                    │
     ├─► search_listings(description, size, max_price)    │
     │       │ if results=[]                              │
     │       ├──► [ERROR] "No listings found..." → return │
