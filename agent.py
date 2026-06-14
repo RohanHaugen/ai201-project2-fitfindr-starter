@@ -20,8 +20,10 @@ Usage (once implemented):
 import re
 from tools import search_listings, suggest_outfit, create_fit_card
 # ── query parsing  ─────────────────────────────────────────────────────────────
-_SIZE_RE=re.compile(r"\b(size\s*(XS|S|M|L|XL|XXS|XXL))\b", re.IGNORECASE)
-
+_SIZE_RE = re.compile(
+    r'(?<![a-zA-Z])(?:size\s+)?(XXS|XS|S|M|L|XL|XXL)(?![a-zA-Z])',
+    re.IGNORECASE
+)
 _PRICE_RE=re.compile(r"(?:under|below|<|max)?\s*\$\s*(\d+(?:\.\d+)?)", re.IGNORECASE)
 
 _NOISE_RE=re.compile(r"\b(under|below|max|size|for|a|an|the|looking|i\'m|im)\b", re.IGNORECASE)

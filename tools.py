@@ -169,7 +169,7 @@ def create_fit_card(outfit: str, new_item: dict) -> str:
     -Sounds like a real person posting their outfit rather than a product description.
     -Mentions the item name, price and platform naturally (once each).
     -Captures the specific vibe of the outfit.
-    -Feels frewsh and spontaneous, not templated.
+    -Feels fresh and spontaneous, not templated.
 
 Return only the caption text, without any hashtags or labels.
 Do not utilize hyphens or m-dashes.

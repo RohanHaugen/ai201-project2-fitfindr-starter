@@ -64,8 +64,6 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[str, str, str]:
         item["description"],
     ]))
     return listing_text, session["outfit_suggestion"], session["fit_card"]
-    # TODO: implement this function
-    return "Agent not yet implemented.", "", ""
 
 
 # ── interface ─────────────────────────────────────────────────────────────────
